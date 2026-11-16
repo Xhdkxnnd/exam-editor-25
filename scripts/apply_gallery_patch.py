@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Patch the decoded legacy activity without relying on JADX formatting."""
+"""Patch the decoded legacy activity and question renderer."""
 from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
 
-# The original APK contains six framework-generated drawable resource names
-# beginning with '$'. AAPT2 rejects '$' in resource entry names, so normalize
-# the names while retaining the original resource IDs in public.xml.
+# AAPT2 rejects six framework-generated drawable names beginning with '$'.
 invalid_names = [
     "$avd_hide_password__0", "$avd_hide_password__1", "$avd_hide_password__2",
     "$avd_show_password__0", "$avd_show_password__1", "$avd_show_password__2",
@@ -28,13 +26,7 @@ for path in list(root.rglob("*")):
         path.rename(path.with_name(path.name[1:]))
 print("Normalized six invalid $avd drawable resource names for AAPT2")
 
-matches = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/EnterOneActivity.smali"))
-if len(matches) != 1:
-    raise SystemExit("Expected exactly one EnterOneActivity.smali; found %d" % len(matches))
-p = matches[0]
-lines = p.read_text().splitlines()
-
-def method_bounds(prefix):
+def method_bounds(lines, prefix):
     start = next((i for i, line in enumerate(lines) if line.startswith(".method") and prefix in line), None)
     if start is None:
         raise SystemExit("Method not found: " + prefix)
@@ -43,34 +35,51 @@ def method_bounds(prefix):
         raise SystemExit("Unterminated method: " + prefix)
     return start, end
 
-# Attach UI after the activity has completed its own view initialization.
+# Patch the question editor.
+matches = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/EnterOneActivity.smali"))
+if len(matches) != 1:
+    raise SystemExit("Expected exactly one EnterOneActivity.smali; found %d" % len(matches))
+p = matches[0]
+lines = p.read_text().splitlines()
 if not any("GalleryImages;->attach" in line for line in lines):
-    start, end = method_bounds("onCreate(")
+    start, end = method_bounds(lines, "onCreate(")
     target = next((i for i in range(start + 1, end) if lines[i].strip() == "return-void"), None)
     if target is None:
         raise SystemExit("Could not find onCreate return")
     lines.insert(target, "    invoke-static {p0}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->attach(Landroid/app/Activity;)V")
-
-# Apply selected paths at the beginning of the existing save routine.
-start, end = method_bounds("_saveT()V")
+start, end = method_bounds(lines, "_saveT()V")
 if not any("GalleryImages;->apply" in line for line in lines[start:end]):
     target = next((i for i in range(start + 1, end) if "->saveX:Landroid/content/SharedPreferences;" in lines[i]), None)
     if target is None:
         raise SystemExit("Could not find saveX access inside _saveT")
     lines.insert(target, "    invoke-static {p0}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->apply(Landroid/app/Activity;)V")
-    end += 1
-
-# Route the gallery picker result to the helper.
 if not any(line.startswith(".method protected onActivityResult(IILandroid/content/Intent;)V") for line in lines):
     lines.extend([
-        "",
-        ".method protected onActivityResult(IILandroid/content/Intent;)V",
-        "    .locals 0",
+        "", ".method protected onActivityResult(IILandroid/content/Intent;)V", "    .locals 0",
         "    invoke-super {p0, p1, p2, p3}, Landroidx/appcompat/app/AppCompatActivity;->onActivityResult(IILandroid/content/Intent;)V",
         "    invoke-static {p0, p1, p2, p3}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->onActivityResult(Landroid/app/Activity;IILandroid/content/Intent;)V",
-        "    return-void",
-        ".end method",
+        "    return-void", ".end method",
     ])
-
 p.write_text("\n".join(lines) + "\n")
-print("Patched", p)
+
+# Patch the adapter that supplies question rows to the template and PDF.
+adapters = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity$Listview1Adapter.smali"))
+if len(adapters) != 1:
+    raise SystemExit("Expected exactly one Listview1Adapter.smali; found %d" % len(adapters))
+ap = adapters[0]
+alines = ap.read_text().splitlines()
+start, end = method_bounds(alines, "getView(ILandroid/view/View;Landroid/view/ViewGroup;)Landroid/view/View;")
+if not any("GalleryImages;->renderQuestion" in line for line in alines[start:end]):
+    target = next((i for i in range(start + 1, end) if alines[i].strip() == "return-object p2"), None)
+    if target is None:
+        raise SystemExit("Could not find getView return-object p2")
+    alines[target:target] = [
+        "    iget-object v0, p0, Lcom/nasa/edateor/exsam/A11/ExzamVActivity$Listview1Adapter;->this$0:Lcom/nasa/edateor/exsam/A11/ExzamVActivity;",
+        "    iget-object v1, p0, Lcom/nasa/edateor/exsam/A11/ExzamVActivity$Listview1Adapter;->_data:Ljava/util/ArrayList;",
+        "    invoke-virtual {v1, p1}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;",
+        "    move-result-object v1",
+        "    check-cast v1, Ljava/util/HashMap;",
+        "    invoke-static {v0, p2, v1}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->renderQuestion(Landroid/app/Activity;Landroid/view/View;Ljava/util/HashMap;)V",
+    ]
+ap.write_text("\n".join(alines) + "\n")
+print("Patched question editor and question-template image renderer")
