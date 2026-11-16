@@ -19,3 +19,9 @@ assert len(adapters5)==1
 a5=adapters5[0].read_text()
 start=a5.index('.method public getView(ILandroid/view/View;Landroid/view/ViewGroup;)Landroid/view/View;'); end=a5.index('.end method',start)
 assert 'GalleryImages;->renderQuestion(Landroid/app/Activity;Landroid/view/View;Ljava/util/HashMap;)V' in a5[start:end]
+
+activity=list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity.smali"))
+assert len(activity)==1
+v=activity[0].read_text()
+start=v.index('.method public PD(Landroid/graphics/pdf/PdfDocument;)V'); end=v.index('.end method',start)
+assert 'GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V' in v[start:end]
