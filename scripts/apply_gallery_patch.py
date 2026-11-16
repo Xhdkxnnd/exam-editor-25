@@ -4,6 +4,30 @@ from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
+
+# The original APK contains six framework-generated drawable resource names
+# beginning with '$'. AAPT2 rejects '$' in resource entry names, so normalize
+# the names while retaining the original resource IDs in public.xml.
+invalid_names = [
+    "$avd_hide_password__0", "$avd_hide_password__1", "$avd_hide_password__2",
+    "$avd_show_password__0", "$avd_show_password__1", "$avd_show_password__2",
+]
+for path in list(root.rglob("*")):
+    if path.is_file() and path.suffix.lower() in {".xml", ".smali", ".txt", ".json"}:
+        try:
+            original = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        updated = original
+        for old in invalid_names:
+            updated = updated.replace(old, old[1:])
+        if updated != original:
+            path.write_text(updated, encoding="utf-8")
+for path in list(root.rglob("*")):
+    if path.is_file() and path.name in {name + ".xml" for name in invalid_names}:
+        path.rename(path.with_name(path.name[1:]))
+print("Normalized six invalid $avd drawable resource names for AAPT2")
+
 matches = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/EnterOneActivity.smali"))
 if len(matches) != 1:
     raise SystemExit("Expected exactly one EnterOneActivity.smali; found %d" % len(matches))
