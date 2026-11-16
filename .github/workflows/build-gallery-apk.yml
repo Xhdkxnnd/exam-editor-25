@@ -1,0 +1,51 @@
+name: Build gallery-only image attachment APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/multi-image-questions]
+    paths: ['src/**','scripts/**','.github/workflows/build-gallery-apk.yml','original/**']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v3
+      - name: Install Android build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install APKTool and utilities
+        run: sudo apt-get update && sudo apt-get install -y apktool unzip zip python3 curl
+      - name: Decode original APK
+        run: |
+          mkdir -p build
+          APK=$(find original -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          apktool d -f "$APK" -o build/apktool
+      - name: Apply and check gallery patch
+        run: |
+          python3 scripts/apply_gallery_patch.py build/apktool
+          python3 scripts/test_gallery_patch.py build/apktool
+      - name: Compile helper DEX
+        run: |
+          mkdir -p build/classes build/helper-dex
+          javac -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d build/classes src/com/nasa/edateor/exsam/A11/GalleryImages.java
+          "$ANDROID_HOME/build-tools/35.0.0/d8" --lib "$ANDROID_HOME/platforms/android-35/android.jar" --min-api 21 --output build/helper-dex $(find build/classes -name '*.class')
+          curl -fsSL https://repo1.maven.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar -o build/baksmali.jar
+          java -jar build/baksmali.jar disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
+      - name: Build unsigned APK
+        run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
+      - name: Align and sign APK
+        run: |
+          keytool -genkeypair -v -keystore build/debug.keystore -storepass android -keypass android -alias exam25 -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Exam Editor 25, OU=Build, O=Local, L=Unknown, S=Unknown, C=YE"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p 4 build/exam-editor-25-unsigned.apk build/exam-editor-25-aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks build/debug.keystore --ks-pass pass:android --key-pass pass:android --out build/exam-editor-25-gallery.apk build/exam-editor-25-aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose build/exam-editor-25-gallery.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exam-editor-25-gallery-apk
+          path: build/exam-editor-25-gallery.apk
+          if-no-files-found: error
+          retention-days: 14
