@@ -96,8 +96,8 @@ import re
 # Match the actual Smali register names instead of assuming a fixed pair
 # (the original APK uses different registers across build variants).
 draw_pattern = re.compile(
-    r"^(\\s*)invoke-virtual\\s+\\{([^}]+)\\},\\s*"
-    r"Landroid/widget/LinearLayout;->draw\\(Landroid/graphics/Canvas;\\)V\\s*$"
+    r"^(\s*)invoke-virtual\s+\{([^}]+)\},\s*"
+    r"Landroid/widget/LinearLayout;->draw\(Landroid/graphics/Canvas;\)V\s*$"
 )
 patched_draws = 0
 for index, line in enumerate(pdf_method):
