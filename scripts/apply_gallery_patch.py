@@ -103,4 +103,26 @@ if not any("GalleryImages;->renderQuestion" in line for line in a5lines[start:en
         "    invoke-static {v0, p2, v1}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->renderQuestion(Landroid/app/Activity;Landroid/view/View;Ljava/util/HashMap;)V",
     ]
 ap5.write_text("\n".join(a5lines) + "\n")
-print("Patched question editor and both question-template/PDF page adapters")
+# Flatten PDF pages to bitmap before embedding; this preserves fallback emoji glyphs on printers.
+activity = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity.smali"))
+if len(activity) != 1:
+    raise SystemExit("Expected exactly one ExzamVActivity.smali; found %d" % len(activity))
+vp = activity[0]
+vlines = vp.read_text().splitlines()
+start, end = method_bounds(vlines, "PD(Landroid/graphics/pdf/PdfDocument;)V")
+pdf_method = vlines[start:end]
+replacements = [
+    ("invoke-virtual {v2, v3}, Landroid/widget/LinearLayout;->draw(Landroid/graphics/Canvas;)V",
+     "invoke-static {v2, v3}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V"),
+    ("invoke-virtual {v1, v2}, Landroid/widget/LinearLayout;->draw(Landroid/graphics/Canvas;)V",
+     "invoke-static {v1, v2}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V"),
+]
+for old, new in replacements:
+    if old in pdf_method:
+        pdf_method = [new if line == old else line for line in pdf_method]
+if not any("GalleryImages;->drawPdfRaster" in line for line in pdf_method):
+    raise SystemExit("Could not patch PDF page drawing calls")
+vlines[start:end] = pdf_method
+vp.write_text("\n".join(vlines) + "\n")
+print("Patched both PDF question adapters and rasterized PDF page drawing")
+
