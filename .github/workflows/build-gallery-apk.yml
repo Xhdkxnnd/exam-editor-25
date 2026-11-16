@@ -46,7 +46,10 @@ jobs:
           </project>
           POM
           mvn -q -f build/baksmali-pom.xml dependency:copy-dependencies -DoutputDirectory=build/baksmali-libs
-          java -cp "build/baksmali-libs/*" org.jf.baksmali.Main disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
+          curl -fsSL https://repo1.maven.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar -o build/baksmali.jar
+          test -s build/baksmali.jar
+          jar tf build/baksmali.jar | grep -q 'org/jf/baksmali/Main.class'
+          java -cp "build/baksmali.jar:build/baksmali-libs/*" org.jf.baksmali.Main disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
       - name: Build unsigned APK
         run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
       - name: Align and sign APK
