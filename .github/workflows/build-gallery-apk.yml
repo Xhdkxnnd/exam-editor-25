@@ -65,7 +65,7 @@ jobs:
           DEPENDENCY_CP=$(find build/baksmali-libs -maxdepth 1 -type f -name '*.jar' -printf '%p:' )
           java -cp "build/baksmali.jar:$DEPENDENCY_CP" org.jf.baksmali.Main disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
       - name: Build unsigned APK
-        run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
+        run: apktool b --use-aapt2 --aapt "$ANDROID_HOME/build-tools/35.0.0/aapt2" build/apktool -o build/exam-editor-25-unsigned.apk
       - name: Align and sign APK
         run: |
           keytool -genkeypair -v -keystore build/debug.keystore -storepass android -keypass android -alias exam25 -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Exam Editor 25, OU=Build, O=Local, L=Unknown, S=Unknown, C=YE"
