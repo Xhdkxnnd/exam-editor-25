@@ -91,17 +91,34 @@ vp = activity[0]
 vlines = vp.read_text().splitlines()
 start, end = method_bounds(vlines, "PD(Landroid/graphics/pdf/PdfDocument;)V")
 pdf_method = vlines[start:end]
-replacements = [
-    ("invoke-virtual {v2, v3}, Landroid/widget/LinearLayout;->draw(Landroid/graphics/Canvas;)V",
-     "invoke-static {v2, v3}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V"),
-    ("invoke-virtual {v1, v2}, Landroid/widget/LinearLayout;->draw(Landroid/graphics/Canvas;)V",
-     "invoke-static {v1, v2}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V"),
-]
-for old, new in replacements:
-    if old in pdf_method:
-        pdf_method = [new if line == old else line for line in pdf_method]
-if not any("GalleryImages;->drawPdfRaster" in line for line in pdf_method):
-    raise SystemExit("Could not patch PDF page drawing calls")
+import re
+
+# Match the actual Smali register names instead of assuming a fixed pair
+# (the original APK uses different registers across build variants).
+draw_pattern = re.compile(
+    r"^(\\s*)invoke-virtual\\s+\\{([^}]+)\\},\\s*"
+    r"Landroid/widget/LinearLayout;->draw\\(Landroid/graphics/Canvas;\\)V\\s*$"
+)
+patched_draws = 0
+for index, line in enumerate(pdf_method):
+    match = draw_pattern.match(line)
+    if match:
+        registers = match.group(2)
+        if len([part.strip() for part in registers.split(",")]) != 2:
+            continue
+        pdf_method[index] = (
+            f"{match.group(1)}invoke-static {{{registers}}}, "
+            "Lcom/nasa/edateor/exsam/A11/GalleryImages;->"
+            "drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V"
+        )
+        patched_draws += 1
+
+if patched_draws == 0 and not any("GalleryImages;->drawPdfRaster" in line for line in pdf_method):
+    candidates = [line.strip() for line in pdf_method if "->draw(Landroid/graphics/Canvas;)V" in line]
+    raise SystemExit(
+        "Could not patch PDF page drawing calls; draw() candidates: "
+        + repr(candidates)
+    )
 vlines[start:end] = pdf_method
 vp.write_text("\n".join(vlines) + "\n")
 print("Patched both PDF question adapters and rasterized PDF page drawing")
