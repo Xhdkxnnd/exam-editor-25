@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
 import java.io.*;
 import java.lang.reflect.Field;
@@ -37,8 +38,9 @@ public final class GalleryImages {
   }catch(Exception e){Toast.makeText(a,"تعذر تهيئة معرض الصور",Toast.LENGTH_LONG).show();}
  }
  private static int dp(Activity a,int n){return (int)(n*a.getResources().getDisplayMetrics().density+.5f);}
+ private static Bitmap bitmap(Activity a,String path){BitmapFactory.Options o=new BitmapFactory.Options();o.inSampleSize=4;return BitmapFactory.decodeFile(new File(a.getFilesDir(),path).getAbsolutePath(),o);}
  private static void render(Activity a,LinearLayout strip,ArrayList<String> list){
-  strip.removeAllViews();for(int n=0;n<list.size();n++){final String path=list.get(n);final int index=n;LinearLayout item=new LinearLayout(a);item.setOrientation(1);ImageView image=new ImageView(a);image.setScaleType(ImageView.ScaleType.CENTER_CROP);BitmapFactory.Options o=new BitmapFactory.Options();o.inSampleSize=4;Bitmap b=BitmapFactory.decodeFile(new File(a.getFilesDir(),path).getAbsolutePath(),o);if(b!=null)image.setImageBitmap(b);item.addView(image,new LinearLayout.LayoutParams(dp(a,88),dp(a,88)));Button del=new Button(a);del.setText("حذف");del.setOnClickListener(v->{list.remove(index);new File(a.getFilesDir(),path).delete();save(a,list);render(a,strip,list);});item.addView(del);strip.addView(item);}
+  strip.removeAllViews();for(int n=0;n<list.size();n++){final String path=list.get(n);final int index=n;LinearLayout item=new LinearLayout(a);item.setOrientation(1);ImageView image=new ImageView(a);image.setScaleType(ImageView.ScaleType.CENTER_CROP);Bitmap b=bitmap(a,path);if(b!=null)image.setImageBitmap(b);item.addView(image,new LinearLayout.LayoutParams(dp(a,88),dp(a,88)));Button del=new Button(a);del.setText("حذف");del.setOnClickListener(v->{list.remove(index);new File(a.getFilesDir(),path).delete();save(a,list);render(a,strip,list);});item.addView(del);strip.addView(item);}
  }
  public static void onActivityResult(Activity a,int request,int result,Intent data){
   if(request!=REQUEST||result!=Activity.RESULT_OK||data==null)return;
@@ -49,5 +51,23 @@ public final class GalleryImages {
  }
  @SuppressWarnings("unchecked") public static void apply(Activity a){
   try{ArrayList<String> selected=paths(a);if("A".equals(field(a,"Tipee"))){((HashMap<String,Object>)field(a,"mmmo")).put("images",new ArrayList<>(selected));}else{ArrayList<HashMap<String,Object>> list=(ArrayList<HashMap<String,Object>>)field(a,"list_allQ");list.get((int)(double)(Double)field(a,"Position")).put("images",new ArrayList<>(selected));}a.getSharedPreferences(PREF,0).edit().remove(key(a)).apply();}catch(Exception e){Toast.makeText(a,"تعذر حفظ الصور",Toast.LENGTH_LONG).show();}
+ }
+ /** Adds saved question images to the actual question row used by the template and PDF. */
+ @SuppressWarnings("unchecked") public static void renderQuestion(Activity a,View row,HashMap<String,Object> question){
+  if(!(row instanceof LinearLayout)||question==null)return;
+  LinearLayout root=(LinearLayout)row;
+  while(root.getChildCount()>1)root.removeViewAt(1);
+  Object value=question.get("images");
+  if(!(value instanceof List))return;
+  List<?> paths=(List<?>)value;if(paths.isEmpty())return;
+  LinearLayout strip=new LinearLayout(a);strip.setOrientation(LinearLayout.HORIZONTAL);
+  for(Object item:paths){
+   if(item==null)continue;
+   File file=new File(a.getFilesDir(),item.toString());if(!file.isFile())continue;
+   Bitmap b=bitmap(a,item.toString());if(b==null)continue;
+   ImageView image=new ImageView(a);image.setScaleType(ImageView.ScaleType.CENTER_INSIDE);image.setImageBitmap(b);
+   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(a,150),dp(a,120));lp.setMargins(dp(a,4),dp(a,4),dp(a,4),dp(a,4));strip.addView(image,lp);
+  }
+  if(strip.getChildCount()>0){HorizontalScrollView scroll=new HorizontalScrollView(a);scroll.setFillViewport(false);scroll.addView(strip);root.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(a,128)));}
  }
 }
