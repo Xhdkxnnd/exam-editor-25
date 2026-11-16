@@ -55,22 +55,7 @@ jobs:
           # Verify the utility base class is actually present in the downloaded runtime jars.
           FOUND_COMMAND=false
           for dependency in build/baksmali-libs/*.jar; do
-            if jar tf "$dependency" | grep -q '^org/jf/util/jcommander/Command.class
-      - name: Build unsigned APK
-        run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
-      - name: Align and sign APK
-        run: |
-          keytool -genkeypair -v -keystore build/debug.keystore -storepass android -keypass android -alias exam25 -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Exam Editor 25, OU=Build, O=Local, L=Unknown, S=Unknown, C=YE"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p 4 build/exam-editor-25-unsigned.apk build/exam-editor-25-aligned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks build/debug.keystore --ks-pass pass:android --key-pass pass:android --out build/exam-editor-25-gallery.apk build/exam-editor-25-aligned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose build/exam-editor-25-gallery.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: exam-editor-25-gallery-apk
-          path: build/exam-editor-25-gallery.apk
-          if-no-files-found: error
-          retention-days: 14
-; then
+            if jar tf "$dependency" | grep -q '^org/jf/util/jcommander/Command.class$'; then
               echo "Found org.jf.util.jcommander.Command in $dependency"
               FOUND_COMMAND=true
               break
