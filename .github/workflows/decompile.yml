@@ -1,0 +1,75 @@
+
+name: Decompile Exam Editor 25
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install APKTool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apktool unzip zip curl jq
+
+      - name: Download JADX
+        run: |
+          set -e
+          URL=$(curl -fsSL \
+            https://api.github.com/repos/skylot/jadx/releases/latest \
+            | jq -r '.assets[]
+              | select(.name | test("^jadx-[0-9.]+\\.zip$"))
+              | .browser_download_url' \
+            | head -n 1)
+
+          test -n "$URL"
+          curl -fL "$URL" -o jadx.zip
+          mkdir jadx
+          unzip -q jadx.zip -d jadx
+          chmod +x jadx/bin/jadx
+
+      - name: Check original APK
+        run: |
+          test -f "original/محرر الامتحانات25.apk"
+          unzip -t "original/محرر الامتحانات25.apk"
+
+      - name: Decode APK resources and Smali
+        run: |
+          mkdir -p output
+          apktool d -f \
+            "original/محرر الامتحانات25.apk" \
+            -o output/apktool
+
+      - name: Decompile DEX to Java
+        run: |
+          jadx/bin/jadx \
+            --show-bad-code \
+            -d output/jadx \
+            "original/محرر الامتحانات25.apk"
+
+      - name: Package results
+        run: |
+          cd output
+          zip -qr ../decompiled-source.zip apktool jadx
+
+      - name: Upload extracted project
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-editor-25-decompiled
+          path: decompiled-source.zip
+          if-no-files-found: error
+          retention-days: 14
