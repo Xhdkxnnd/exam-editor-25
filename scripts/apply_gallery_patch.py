@@ -83,26 +83,6 @@ if not any("GalleryImages;->renderQuestion" in line for line in alines[start:end
     ]
 ap.write_text("\n".join(alines) + "\n")
 
-# Patch the continuation-page adapter too; PDF generation draws both page layouts.
-adapters_5 = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity$Listview1_5Adapter.smali"))
-if len(adapters_5) != 1:
-    raise SystemExit("Expected exactly one Listview1_5Adapter.smali; found %d" % len(adapters_5))
-ap5 = adapters_5[0]
-a5lines = ap5.read_text().splitlines()
-start, end = method_bounds(a5lines, "getView(ILandroid/view/View;Landroid/view/ViewGroup;)Landroid/view/View;")
-if not any("GalleryImages;->renderQuestion" in line for line in a5lines[start:end]):
-    target = next((i for i in range(start + 1, end) if a5lines[i].strip().startswith("return-object ")), None)
-    if target is None:
-        raise SystemExit("Could not find getView return in continuation adapter")
-    a5lines[target:target] = [
-        "    iget-object v0, p0, Lcom/nasa/edateor/exsam/A11/ExzamVActivity$Listview1_5Adapter;->this$0:Lcom/nasa/edateor/exsam/A11/ExzamVActivity;",
-        "    iget-object v1, p0, Lcom/nasa/edateor/exsam/A11/ExzamVActivity$Listview1_5Adapter;->_data:Ljava/util/ArrayList;",
-        "    invoke-virtual {v1, p1}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;",
-        "    move-result-object v1",
-        "    check-cast v1, Ljava/util/HashMap;",
-        "    invoke-static {v0, p2, v1}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->renderQuestion(Landroid/app/Activity;Landroid/view/View;Ljava/util/HashMap;)V",
-    ]
-ap5.write_text("\n".join(a5lines) + "\n")
 # Flatten PDF pages to bitmap before embedding; this preserves fallback emoji glyphs on printers.
 activity = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity.smali"))
 if len(activity) != 1:
