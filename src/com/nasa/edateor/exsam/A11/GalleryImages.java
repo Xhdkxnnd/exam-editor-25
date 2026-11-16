@@ -67,9 +67,21 @@ public final class GalleryImages {
    File file=new File(a.getFilesDir(),item.toString());if(!file.isFile())continue;
    Bitmap b=bitmap(a,item.toString());if(b==null)continue;
    ImageView image=new ImageView(a);image.setScaleType(ImageView.ScaleType.CENTER_INSIDE);image.setImageBitmap(b);
-   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(a,150),dp(a,120));lp.setMargins(dp(a,4),dp(a,4),dp(a,4),dp(a,4));strip.addView(image,lp);
+   // Zero margins make neighboring images touch without side gaps.
+   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(a,150),dp(a,120));
+   lp.setMargins(0,0,0,0);
+   strip.addView(image,lp);
   }
-  if(strip.getChildCount()>0){HorizontalScrollView scroll=new HorizontalScrollView(a);scroll.setFillViewport(false);scroll.addView(strip);root.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(a,128)));}
+  if(strip.getChildCount()>0){
+   HorizontalScrollView scroll=new HorizontalScrollView(a);
+   scroll.setFillViewport(false);
+   scroll.setHorizontalScrollBarEnabled(false);
+   scroll.addView(strip,new HorizontalScrollView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,dp(a,120)));
+   root.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(a,120)));
+   // A small blank area below the image row gives the student room to answer.
+   View answerSpace=new View(a);
+   root.addView(answerSpace,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(a,28)));
+  }
 
  }
  /** Rasterizes the PDF page so fallback emoji glyphs are embedded as pixels, not printer-dependent fonts. */
