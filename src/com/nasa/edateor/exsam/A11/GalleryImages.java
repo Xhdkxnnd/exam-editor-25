@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.net.Uri;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,5 +70,23 @@ public final class GalleryImages {
    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(a,150),dp(a,120));lp.setMargins(dp(a,4),dp(a,4),dp(a,4),dp(a,4));strip.addView(image,lp);
   }
   if(strip.getChildCount()>0){HorizontalScrollView scroll=new HorizontalScrollView(a);scroll.setFillViewport(false);scroll.addView(strip);root.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(a,128)));}
+
+ }
+ /** Rasterizes the PDF page so fallback emoji glyphs are embedded as pixels, not printer-dependent fonts. */
+ public static void drawPdfRaster(View view, Canvas target) {
+  if(view==null||target==null)return;
+  int width=view.getWidth(), height=view.getHeight();
+  if(width<=0||height<=0){view.draw(target);return;}
+  Bitmap page=null;
+  try {
+   page=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+   Canvas raster=new Canvas(page);
+   view.draw(raster);
+   target.drawBitmap(page,0f,0f,null);
+  } catch(Throwable failure) {
+   view.draw(target);
+  } finally {
+   if(page!=null&&!page.isRecycled())page.recycle();
+  }
  }
 }
