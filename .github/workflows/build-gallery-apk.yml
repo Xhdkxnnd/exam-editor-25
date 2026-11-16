@@ -1,3 +1,4 @@
+# Android SDK setup deliberately skips deprecated optional packages; install only the platform/build-tools below.
 name: Build gallery-only image attachment APK
 on:
   workflow_dispatch:
