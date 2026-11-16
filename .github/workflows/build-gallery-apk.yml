@@ -20,7 +20,7 @@ jobs:
       - name: Install Android build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Install APKTool and utilities
-        run: sudo apt-get update && sudo apt-get install -y apktool unzip zip python3 curl
+        run: sudo apt-get update && sudo apt-get install -y apktool unzip zip python3 curl maven
       - name: Decode original APK
         run: |
           mkdir -p build
@@ -36,8 +36,17 @@ jobs:
           mkdir -p build/classes build/helper-dex
           javac -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d build/classes src/com/nasa/edateor/exsam/A11/GalleryImages.java
           "$ANDROID_HOME/build-tools/35.0.0/d8" --lib "$ANDROID_HOME/platforms/android-35/android.jar" --min-api 21 --output build/helper-dex $(find build/classes -name '*.class')
-          curl -fsSL https://repo1.maven.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar -o build/baksmali.jar
-          java -jar build/baksmali.jar disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
+          cat > build/baksmali-pom.xml <<'POM'
+          <project xmlns="http://maven.apache.org/POM/4.0.0">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>local.build</groupId><artifactId>baksmali-runner</artifactId><version>1</version>
+            <dependencies>
+              <dependency><groupId>org.smali</groupId><artifactId>baksmali</artifactId><version>2.5.2</version></dependency>
+            </dependencies>
+          </project>
+          POM
+          mvn -q -f build/baksmali-pom.xml dependency:copy-dependencies -DoutputDirectory=build/baksmali-libs
+          java -cp "build/baksmali-libs/*" org.jf.baksmali.Main disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
       - name: Build unsigned APK
         run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
       - name: Align and sign APK
