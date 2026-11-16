@@ -48,7 +48,7 @@ jobs:
           </project>
           POM
           mvn -f build/baksmali-pom.xml dependency:tree -Dscope=runtime
-          mvn -q -f build/baksmali-pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=build/baksmali-libs
+          mvn -q -f build/baksmali-pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=baksmali-libs
           curl -fsSL https://repo.maven.apache.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar -o build/baksmali.jar
           test -s build/baksmali.jar
           jar tf build/baksmali.jar | grep -q 'org/jf/baksmali/Main.class'
@@ -62,7 +62,7 @@ jobs:
             fi
           done
           test "$FOUND_COMMAND" = true
-          DEPENDENCY_CP=$(find build/baksmali-libs -maxdepth 1 -name '*.jar' -printf '%p:' )
+          DEPENDENCY_CP=$(find build/baksmali-libs -maxdepth 1 -type f -name '*.jar' -printf '%p:' )
           java -cp "build/baksmali.jar:$DEPENDENCY_CP" org.jf.baksmali.Main disassemble build/helper-dex/classes.dex -o build/apktool/smali_classes47
       - name: Build unsigned APK
         run: apktool b build/apktool -o build/exam-editor-25-unsigned.apk
