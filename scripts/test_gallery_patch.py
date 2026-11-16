@@ -22,4 +22,8 @@ start=v.index("PD(Landroid/graphics/pdf/PdfDocument;)V")
 start=v.rfind(".method",0,start)
 end=v.index(".end method",start)
 assert "GalleryImages;->drawPdfRaster(Landroid/view/View;Landroid/graphics/Canvas;)V" in v[start:end], "primary PDF page must use raster drawing"
-print('Gallery save, question-template rendering, and primary PDF raster checks passed')
+
+helper=Path("src/com/nasa/edateor/exsam/A11/GalleryImages.java").read_text()
+assert "lp.setMargins(0,0,0,0)" in helper, "question images must have no side gaps"
+assert "dp(a,28)" in helper and "answerSpace" in helper, "small answer space must follow image row"
+print('Gallery save, tight image spacing, answer space, and primary PDF raster checks passed')
