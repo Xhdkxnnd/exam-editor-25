@@ -3,6 +3,9 @@ name: Decompile Exam Editor 25
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/decompile.yml'
 
 permissions:
   contents: read
