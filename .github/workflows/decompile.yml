@@ -1,4 +1,4 @@
-
+# Recovery branch trigger: run the APK extraction workflow without changing main.
 name: Decompile Exam Editor 25
 
 on:
