@@ -13,6 +13,7 @@ permissions:
 jobs:
   decompile:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -34,9 +35,7 @@ jobs:
           set -e
           URL=$(curl -fsSL \
             https://api.github.com/repos/skylot/jadx/releases/latest \
-            | jq -r '.assets[]
-              | select(.name | test("^jadx-[0-9.]+\\.zip$"))
-              | .browser_download_url' \
+            | jq -r '.assets[] | select(.name | test("^jadx-[0-9.]+\\.zip$")) | .browser_download_url' \
             | head -n 1)
 
           test -n "$URL"
@@ -64,10 +63,18 @@ jobs:
             -d output/jadx \
             "original/محرر الامتحانات25.apk"
 
+      - name: Verify decompiled output
+        run: |
+          test -d output/apktool
+          test -d output/jadx
+          find output/jadx -type f -name '*.java' | head -n 20
+          test "$(find output/jadx -type f -name '*.java' | wc -l)" -gt 0
+
       - name: Package results
         run: |
           cd output
           zip -qr ../decompiled-source.zip apktool jadx
+          unzip -t ../decompiled-source.zip
 
       - name: Upload extracted project
         uses: actions/upload-artifact@v4
