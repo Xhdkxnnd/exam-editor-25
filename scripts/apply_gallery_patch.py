@@ -146,4 +146,19 @@ if patched_draws + existing_draws < 2:
     raise SystemExit("Expected raster drawing for both PDF pages; found %d" % (patched_draws + existing_draws))
 activity_lines[start:end] = pdf_method
 activity.write_text("\n".join(activity_lines) + "\n")
+provider_paths = root / "res/xml/provider_paths.xml"
+if not provider_paths.is_file():
+    raise SystemExit("FileProvider paths resource is missing")
+provider_xml = provider_paths.read_text(encoding="utf-8")
+restricted_provider_path = '<external-files-path name="exam25_camera" path="Pictures/" />'
+if restricted_provider_path not in provider_xml:
+    provider_xml, replacements = re.subn(
+        r'<external-path\\s+name="external_files"\\s+path="\\."\\s*/>',
+        restricted_provider_path,
+        provider_xml,
+    )
+    if replacements != 1:
+        raise SystemExit("Could not safely restrict FileProvider to app Pictures directory")
+    provider_paths.write_text(provider_xml, encoding="utf-8")
+print("Restricted FileProvider to app-specific Pictures directory")
 print("Patched editor save/cancel lifecycle, both question adapters, and both PDF pages")

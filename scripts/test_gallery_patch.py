@@ -46,7 +46,10 @@ assert 'android:name="androidx.core.content.FileProvider"' in manifest
 assert 'android:authorities="com.nasa.edateor.exsam.A11.provider"' in manifest
 assert 'android:name="android.support.FILE_PROVIDER_PATHS"' in manifest
 provider_paths = root / "res/xml/provider_paths.xml"
-assert provider_paths.is_file() and "external-path" in provider_paths.read_text()
+assert provider_paths.is_file()
+provider_xml = provider_paths.read_text()
+assert 'external-files-path' in provider_xml and 'path="Pictures/"' in provider_xml
+assert '<external-path' not in provider_xml, "FileProvider must not expose the whole shared storage"
 
 helper = Path("src/com/nasa/edateor/exsam/A11/GalleryImages.java").read_text()
 for token in (
@@ -54,6 +57,8 @@ for token in (
     'Class.forName("androidx.core.content.FileProvider")', "getUriForFile",
     "MediaStore.EXTRA_OUTPUT", "Intent.FLAG_GRANT_WRITE_URI_PERMISSION",
     "ClipData.newRawUri", "QUESTION_IMAGES_TAG", 'question.get("images")',
+    "CAMERA_PENDING_PREFIX", "cameraPendingKey", "restoreCameraFile",
+    "getCanonicalPath", "Cannot persist camera output path",
 ):
     assert token in helper, token
 assert "new ArrayList<>(s.paths)" in helper or "new ArrayList<>(current.paths)" in helper
@@ -73,4 +78,7 @@ preview_end = helper.index("public static void apply(", preview_start)
 assert ".delete()" not in helper[preview_start:preview_end], "preview deletion must be deferred until save succeeds"
 assert "if (!s.paths.contains(old))" in helper or "if (!current.paths.contains(oldPath))" in helper
 assert "if (!s.originalPaths.contains(selected))" in helper or "if (!current.originalPaths.contains(selected))" in helper
-print("Gallery/camera, save transaction, cancel cleanup, both adapters, and both PDF pages passed static checks")
+assert "created.cameraFile = restoreCameraFile(a)" in helper
+assert ".putString(cameraPendingKey(a), s.cameraFile.getAbsolutePath()).commit()" in helper
+assert "remove(cameraPendingKey(a)).apply()" in helper
+print("Gallery/camera, process-recovery, restricted FileProvider, save transaction, cancel cleanup, both adapters, and both PDF pages passed static checks")

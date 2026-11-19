@@ -25,6 +25,7 @@ public final class GalleryImages {
     private static final int GALLERY_REQUEST = 27125;
     private static final int CAMERA_REQUEST = 27126;
     private static final String PREFS = "exam25_gallery_pending";
+    private static final String CAMERA_PENDING_PREFIX = "exam25_camera_pending_";
     private static final String QUESTION_IMAGES_TAG = "exam25_question_images";
     private static final Map<Activity, State> STATES = new WeakHashMap<>();
 
@@ -59,6 +60,37 @@ public final class GalleryImages {
 
     private static String safeKey(Activity a) {
         try { return key(a); } catch (Exception ignored) { return "invalid-question"; }
+    }
+
+    private static String cameraPendingKey(Activity a) {
+        return CAMERA_PENDING_PREFIX + safeKey(a);
+    }
+
+    private static File cameraDirectory(Activity a) throws IOException {
+        File dir = a.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (dir == null) throw new IOException("Pictures directory unavailable");
+        return dir.getCanonicalFile();
+    }
+
+    /** Restore the output file after Android recreates the Activity while the camera is open. */
+    private static File restoreCameraFile(Activity a) {
+        SharedPreferences prefs = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
+        String prefKey = cameraPendingKey(a);
+        String path = prefs.getString(prefKey, null);
+        if (path == null || path.isEmpty()) return null;
+        try {
+            File directory = cameraDirectory(a);
+            File candidate = new File(path).getCanonicalFile();
+            String allowedPrefix = directory.getCanonicalPath() + File.separator;
+            if (!candidate.getCanonicalPath().startsWith(allowedPrefix) || !candidate.isFile()) {
+                prefs.edit().remove(prefKey).apply();
+                return null;
+            }
+            return candidate;
+        } catch (Exception ignored) {
+            prefs.edit().remove(prefKey).apply();
+            return null;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -122,6 +154,7 @@ public final class GalleryImages {
         ArrayList<String> selected = prefs.contains(safeKey(a))
                 ? pendingPaths(a) : new ArrayList<>(original);
         State created = new State(selected, original);
+        created.cameraFile = restoreCameraFile(a);
         STATES.put(a, created);
         return created;
     }
@@ -176,10 +209,12 @@ public final class GalleryImages {
 
     private static void openCamera(Activity a, State s) {
         try {
-            File dir = a.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-            if (dir == null) throw new IOException("Pictures directory unavailable");
+            File dir = cameraDirectory(a);
             if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create directory");
             s.cameraFile = File.createTempFile("exam25_", ".jpg", dir);
+            boolean persisted = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
+                    .putString(cameraPendingKey(a), s.cameraFile.getAbsolutePath()).commit();
+            if (!persisted) throw new IOException("Cannot persist camera output path");
             Class<?> provider = Class.forName("androidx.core.content.FileProvider");
             Method getUri = provider.getMethod("getUriForFile", android.content.Context.class, String.class, File.class);
             Uri uri = (Uri) getUri.invoke(null, a, a.getPackageName() + ".provider", s.cameraFile);
@@ -189,14 +224,16 @@ public final class GalleryImages {
             i.setClipData(ClipData.newRawUri("Exam Editor photo", uri));
             a.startActivityForResult(i, CAMERA_REQUEST);
         } catch (Exception e) {
-            deleteCameraFile(s);
+            deleteCameraFile(a, s);
             Toast.makeText(a, "تعذر تشغيل الكاميرا على هذا الجهاز", Toast.LENGTH_LONG).show();
         }
     }
 
-    private static void deleteCameraFile(State s) {
+    private static void deleteCameraFile(Activity a, State s) {
         if (s.cameraFile != null) s.cameraFile.delete();
         s.cameraFile = null;
+        a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
+                .remove(cameraPendingKey(a)).apply();
     }
 
     public static void onActivityResult(Activity a, int request, int result, Intent data) {
@@ -215,7 +252,7 @@ public final class GalleryImages {
             } catch (Exception e) {
                 Toast.makeText(a, "تعذر حفظ الصورة الملتقطة", Toast.LENGTH_LONG).show();
             } finally {
-                deleteCameraFile(s);
+                deleteCameraFile(a, s);
             }
             return;
         }
@@ -359,7 +396,7 @@ public final class GalleryImages {
                 if (file != null) file.delete();
             }
         }
-        deleteCameraFile(s);
+        deleteCameraFile(a, s);
         a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit().remove(safeKey(a)).apply();
         STATES.remove(a);
     }
