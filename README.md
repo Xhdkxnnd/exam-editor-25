@@ -19,10 +19,15 @@
 - لم يتغير `main`؛ التطوير مستمر على فرع العمل فقط.
 
 ## آخر تحقق
-- Commit التنفيذ: [bb53ca2](https://github.com/Xhdkxnnd/exam-editor-25/commit/bb53ca272fb51b6e469d1c66abc9f3d4df65842d).
-- GitHub Actions #34: [نجاح البناء والتوقيع](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44278087476).
-- Artifact: [exam-editor-25-image-attachments-apk](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44278087476/artifacts/14416225667).
+- Commit تنفيذ الصور الأصلي: [bb53ca2](https://github.com/Xhdkxnnd/exam-editor-25/commit/bb53ca272fb51b6e469d1c66abc9f3d4df65842d).
+- إصلاح استعادة مسار الكاميرا وحصر FileProvider: [b335b112](https://github.com/Xhdkxnnd/exam-editor-25/commit/b335b11251f7b541e31103f86616d44f968a032a).
+- إصلاح تعبير Patch الخاص بموارد FileProvider: [8e3b650](https://github.com/Xhdkxnnd/exam-editor-25/commit/8e3b650388dbc79777a1b94b25ff932e4ff46f2d).
+- GitHub Actions #36: [نجاح البناء والتوقيع](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44500602106).
+- Artifact: [exam-editor-25-image-attachments-apk](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44500602106/artifacts/14518030331).
 - نجحت فحوص Python الساكنة، وتجميع Java إلى DEX، وبناء APK، وzipalign، والتحقق من توقيع v1/v2/v3.
+- فحصت ملف APK الناتج: الحجم 5,853,853 بايت، وSHA-256: `0f48ca143cf1df58dcc489bb456577c74e3d47aa28c4c7fabacf4d68b4bea23d`.
+- حجم Artifact ZIP هو 4,903,061 بايت، وSHA-256: `a3c3fd147ac6e13aa2880f1ed112c5639b006af8fdab1ddcb65ab920d860a993`.
+- تم حفظ مسار صورة الكاميرا المؤقت قبل فتح تطبيق الكاميرا واستعادته بعد إعادة إنشاء Activity، كما حُصر FileProvider في مجلد صور التطبيق.
 - لم يثبت بعد اختبار المعرض والكاميرا والطباعة على هاتف حقيقي، ولا معالجة تجاوز الصور الكثيرة لارتفاع الصفحة.
 
 ## تحذير التثبيت

@@ -1,6 +1,16 @@
 # تقرير تنفيذ ميزة الصور المتعددة — محرر الامتحانات 25
 
 ## النتيجة الحالية
+## متابعة 19 نوفمبر 2026
+- Commit معالجة استعادة الكاميرا وحصر FileProvider: [b335b112](https://github.com/Xhdkxnnd/exam-editor-25/commit/b335b11251f7b541e31103f86616d44f968a032a).
+- Commit إصلاح regex الخاص بتعديل XML: [8e3b650](https://github.com/Xhdkxnnd/exam-editor-25/commit/8e3b650388dbc79777a1b94b25ff932e4ff46f2d).
+- Workflow #35 فشل لأن regex الأول كان مهروباً مرتين ولم يطابق XML؛ صححت النمط وأعاد Workflow #36 التنفيذ بنجاح.
+- Workflow #36: [نجاح](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44500602106)، و[Artifact APK](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44500602106/artifacts/14518030331).
+- اجتازت فحوص Patch اختبار نطاق FileProvider المحدد، واستعادة ملف الكاميرا، وحفظ السؤال وإلغاءه، ومحولي الصفحتين وPDF.
+- تحقق التوقيع v1/v2/v3. حجم APK: 5,853,853 بايت؛ SHA-256: `0f48ca143cf1df58dcc489bb456577c74e3d47aa28c4c7fabacf4d68b4bea23d`.
+- FileProvider أصبح يشارك فقط مجلد صور التطبيق `Pictures/` بدلاً من جذر التخزين الخارجي. لم يتغير SQLite أو `onUpgrade()`.
+- لم يتم اختبار APK على هاتف أو طابعة فعلية بعد.
+
 - الفرع: `work/multi-image-questions`.
 - Commit التنفيذ: [bb53ca272fb51b6e469d1c66abc9f3d4df65842d](https://github.com/Xhdkxnnd/exam-editor-25/commit/bb53ca272fb51b6e469d1c66abc9f3d4df65842d).
 - Workflow #34: [Build gallery and camera image attachment APK — Success](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44278087476).
