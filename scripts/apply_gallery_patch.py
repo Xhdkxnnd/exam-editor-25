@@ -153,7 +153,7 @@ provider_xml = provider_paths.read_text(encoding="utf-8")
 restricted_provider_path = '<external-files-path name="exam25_camera" path="Pictures/" />'
 if restricted_provider_path not in provider_xml:
     provider_xml, replacements = re.subn(
-        r'<external-path\\s+name="external_files"\\s+path="\\."\\s*/>',
+        r'<external-path\s+name="external_files"\s+path="\."\s*/>',
         restricted_provider_path,
         provider_xml,
     )
