@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import xml.etree.ElementTree as ET
 
 root = Path(sys.argv[1])
 editor_files = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/EnterOneActivity.smali"))
@@ -59,6 +60,7 @@ for token in (
     "ClipData.newRawUri", "QUESTION_IMAGES_TAG", 'question.get("images")',
     "CAMERA_PENDING_PREFIX", "cameraPendingKey", "restoreCameraFile",
     "getCanonicalPath", "Cannot persist camera output path",
+    "private static void releaseBitmaps(View view)", "bitmap.recycle()",
 ):
     assert token in helper, token
 assert "new ArrayList<>(s.paths)" in helper or "new ArrayList<>(current.paths)" in helper
@@ -81,4 +83,24 @@ assert "if (!s.originalPaths.contains(selected))" in helper or "if (!current.ori
 assert "created.cameraFile = restoreCameraFile(a)" in helper
 assert ".putString(cameraPendingKey(a), s.cameraFile.getAbsolutePath()).commit()" in helper
 assert "remove(cameraPendingKey(a)).apply()" in helper
-print("Gallery/camera, process-recovery, restricted FileProvider, save transaction, cancel cleanup, both adapters, and both PDF pages passed static checks")
+assert helper.index("releaseBitmaps(previous)") < helper.index("removeView(previous)")
+preview_start = helper.index("private static void renderPreview(")
+preview_end = helper.index("public static void apply(", preview_start)
+preview = helper[preview_start:preview_end]
+assert "releaseBitmaps(s.preview.getChildAt(i))" in preview
+assert preview.index("releaseBitmaps(s.preview.getChildAt(i))") < preview.index("s.preview.removeAllViews()")
+
+layout_path = root / "res/layout/custam_v1.xml"
+assert layout_path.is_file()
+layout = ET.parse(layout_path).getroot()
+android_ns = "{http://schemas.android.com/apk/res/android}"
+assert layout.attrib.get(android_ns + "orientation") == "vertical"
+linear1 = next((child for child in layout if child.attrib.get(android_ns + "id") == "@id/linear1"), None)
+assert linear1 is not None and linear1.attrib.get(android_ns + "orientation") == "horizontal"
+for adapter_name in ("Listview1Adapter", "Listview1_5Adapter"):
+    adapters = list(root.glob("smali_classes*/com/nasa/edateor/exsam/A11/ExzamVActivity$" + adapter_name + ".smali"))
+    assert len(adapters) == 1
+    adapter_source = adapters[0].read_text()
+    assert "invoke-static {v0, p2, v1}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->renderQuestion" in adapter_source
+
+print("Gallery/camera, process-recovery, restricted FileProvider, save transaction, cancel cleanup, vertical row layout, bitmap release, both adapters, and both PDF pages passed static checks")

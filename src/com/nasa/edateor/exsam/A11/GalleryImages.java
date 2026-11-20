@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -323,8 +324,30 @@ public final class GalleryImages {
         return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
     }
 
+    /** Release detached preview/row bitmaps promptly when ListView recycles its views. */
+    private static void releaseBitmaps(View view) {
+        if (view == null) return;
+        if (view instanceof ImageView) {
+            ImageView image = (ImageView) view;
+            android.graphics.drawable.Drawable drawable = image.getDrawable();
+            image.setImageDrawable(null);
+            if (drawable instanceof BitmapDrawable) {
+                Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+            }
+            return;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++)
+                releaseBitmaps(group.getChildAt(i));
+        }
+    }
+
     private static void renderPreview(Activity a, State s) {
         if (s.preview == null) return;
+        for (int i = 0; i < s.preview.getChildCount(); i++)
+            releaseBitmaps(s.preview.getChildAt(i));
         s.preview.removeAllViews();
         for (String path : new ArrayList<>(s.paths)) {
             Bitmap bitmap = decode(internalFile(a, path), dp(a, 88), dp(a, 88));
@@ -406,8 +429,11 @@ public final class GalleryImages {
         if (!(row instanceof LinearLayout) || question == null) return;
         LinearLayout root = (LinearLayout) row;
         View previous = root.findViewWithTag(QUESTION_IMAGES_TAG);
-        if (previous != null && previous.getParent() instanceof ViewGroup)
-            ((ViewGroup) previous.getParent()).removeView(previous);
+        if (previous != null) {
+            releaseBitmaps(previous);
+            if (previous.getParent() instanceof ViewGroup)
+                ((ViewGroup) previous.getParent()).removeView(previous);
+        }
         Object value = question.get("images");
         if (!(value instanceof List<?>)) return; // Old questions without images are unchanged.
 
