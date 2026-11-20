@@ -1,3 +1,19 @@
+## متابعة 20 نوفمبر 2026 — تحسين إدارة ذاكرة الصور
+
+- Commit: [a4fe2038](https://github.com/Xhdkxnnd/exam-editor-25/commit/a4fe2038adfc41f5cbfe22c4c31b52b7955e0953) — تحرير صور Bitmap المنفصلة عند إعادة تدوير صفوف ListView وتحديث المعاينة.
+- أضيفت دالة `releaseBitmaps` لمسح مراجع ImageView ثم تحرير Bitmap عندما لا يعود العرض محتاجاً إليها؛ وتُستدعى قبل إزالة شبكة الصور القديمة من صف السؤال وقبل إعادة بناء المعاينة. هذا يقلل تراكم الذاكرة عند التمرير أو إضافة/حذف صور كثيرة.
+- توسعت الاختبارات الساكنة لتتحقق من تحرير الصور قبل إزالة العروض، ومن بنية `custam_v1.xml` (الجذر عمودي والحاوية `linear1` أفقية)، ومن تمرير الجذر الخارجي الصحيح إلى محولي الصفحتين.
+- GitHub Actions #37: [نجاح البناء والاختبارات](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44709221595). نجحت فحوص Python، وتجميع Java إلى DEX، وبناء APK، وzipalign، والتحقق من توقيع v1/v2/v3.
+- Artifact: [تنزيل APK التجريبي](https://github.com/Xhdkxnnd/exam-editor-25/actions/runs/44709221595/artifacts/14616566620). حجم ZIP: 4,905,880 بايت؛ SHA-256: `d0592eff513df3ab7dff87ea263c5ec05cb7403bcbdd57ab00533846a9cdf2e8`.
+- فحصت الأرشيف بعد تنزيله: APK حجمه 5,853,853 بايت، ويحتوي 47 ملف DEX بما فيها `classes47.dex`. SHA-256 للـ APK: `bd6888daca1da3f6f0985ea93c764f945e183119aef190237cbe4592d1aac5cf`. وتأكدت من وجود `GalleryImages` وطرائق `releaseBitmaps` و`renderQuestion` و`drawPdfRaster` في DEX المساعد.
+- لا تزال نتيجة البناء غير اختبار تشغيل على هاتف أو طباعة فعلية. لم يتغير SQLite أو `onUpgrade()`، ولم يُعدّل `main`.
+
+## حالة التفرع في 20 نوفمبر 2026
+- فرع العمل بعد هذا التحديث متقدم على `main` بـ 47 commit ومتأخر عنه باثنين.
+- التغييران الجديدان على `main` هما [dcc9fa1](https://github.com/Xhdkxnnd/exam-editor-25/commit/dcc9fa1d0f388aca95bcb986f9097720a1cc7cf3) (تحقق إضافي من Artifact التفكيك) و[4f29152](https://github.com/Xhdkxnnd/exam-editor-25/commit/4f291522b10123d92327d2f73679d0f051b763b2) (تشغيل Workflow التفكيك عند تعديل ملفه). لم أدمجهما في فرع العمل لأن الدمج يحتاج مراجعة واختباراً مستقلاً.
+- تحذيرات البناء غير المانعة: إهمال sdkmanager وsetup-java@v4 وتحذير javac عن bootstrap class path.
+- مفتاح توقيع APK ما زال Debug مؤقتاً لكل تشغيل؛ لا يُستخدم كتحديث فوق النسخة الأصلية ذات التوقيع المختلف.
+
 # تقرير تنفيذ ميزة الصور المتعددة — محرر الامتحانات 25
 
 ## النتيجة الحالية
