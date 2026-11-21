@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Environment;
@@ -309,6 +310,19 @@ public final class GalleryImages {
         return relative;
     }
 
+    /** Read the legacy app's EXIF rotation helper without adding a new runtime dependency. */
+    private static int jpegRotation(File file) {
+        if (file == null) return 0;
+        try {
+            Class<?> utility = Class.forName("com.nasa.edateor.exsam.A11.FileUtil");
+            Method method = utility.getMethod("getJpegRotate", String.class);
+            Object value = method.invoke(null, file.getAbsolutePath());
+            return value instanceof Integer ? ((Integer) value).intValue() : 0;
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
     private static Bitmap decode(File file, int targetWidth, int targetHeight) {
         if (file == null || !file.isFile()) return null;
         BitmapFactory.Options bounds = new BitmapFactory.Options();
@@ -321,7 +335,20 @@ public final class GalleryImages {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        Bitmap decoded = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        if (decoded == null) return null;
+        int rotation = jpegRotation(file);
+        if (rotation == 0) return decoded;
+        try {
+            Matrix transform = new Matrix();
+            transform.postRotate(rotation);
+            Bitmap oriented = Bitmap.createBitmap(decoded, 0, 0,
+                    decoded.getWidth(), decoded.getHeight(), transform, true);
+            if (oriented != decoded) decoded.recycle();
+            return oriented;
+        } catch (Throwable ignored) {
+            return decoded;
+        }
     }
 
     /** Release detached preview/row bitmaps promptly when ListView recycles its views. */
