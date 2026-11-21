@@ -1,3 +1,11 @@
+## متابعة 21 نوفمبر 2026 — تصحيح اتجاه صور JPEG
+- Commit الكود: [c896a3f8](https://github.com/Xhdkxnnd/exam-editor-25/commit/c896a3f844faf24272f079c1249897c65a1615a0) — قراءة زاوية EXIF باستخدام الدالة الموجودة في التطبيق `FileUtil.getJpegRotate` وتدوير Bitmap قبل عرضه.
+- Commit الاختبار: [d15ebf87](https://github.com/Xhdkxnnd/exam-editor-25/commit/d15ebf87dddf4d6d59cced0672523919184d934d) — فحوص ساكنة لتأكيد استدعاء EXIF وتدوير الصورة، مع الاحتفاظ بالصورة الأصلية إذا فشل التدوير.
+- الهدف: منع صور الكاميرا وبعض صور المعرض التي تحمل Orientation في EXIF من الظهور على جانبها في المعاينة والامتحان وPDF. لا تُعدّل ملفات الصور الأصلية؛ التدوير يطبق على Bitmap المعروض فقط.
+- لا أضيف اعتماداً جديداً: يستدعي المساعد دالة EXIF الموجودة أصلاً في التطبيق عبر Reflection، ويعود إلى عدم التدوير إذا لم تتوفر.
+- فحوص الاختبار الساكنة أُضيفت إلى `scripts/test_gallery_patch.py`. نتيجة GitHub Actions لهذا التغيير لم تُتحقق بعد في هذه المتابعة.
+- لم يتغير SQLite أو `DatabaseHelper.onUpgrade()`، ولم يُعدّل `main`. ما زال اختبار الهاتف وPDF والطباعة الفعلية مطلوباً.
+
 ## متابعة 20 نوفمبر 2026 — تحسين إدارة ذاكرة الصور
 
 - Commit: [a4fe2038](https://github.com/Xhdkxnnd/exam-editor-25/commit/a4fe2038adfc41f5cbfe22c4c31b52b7955e0953) — تحرير صور Bitmap المنفصلة عند إعادة تدوير صفوف ListView وتحديث المعاينة.
