@@ -61,6 +61,10 @@ for token in (
     "CAMERA_PENDING_PREFIX", "cameraPendingKey", "restoreCameraFile",
     "getCanonicalPath", "Cannot persist camera output path",
     "private static void releaseBitmaps(View view)", "bitmap.recycle()",
+    'Class.forName("com.nasa.edateor.exsam.A11.FileUtil")',
+    'getMethod("getJpegRotate", String.class)',
+    "private static int jpegRotation(File file)", "Matrix transform = new Matrix()",
+    "transform.postRotate(rotation)",
 ):
     assert token in helper, token
 assert "new ArrayList<>(s.paths)" in helper or "new ArrayList<>(current.paths)" in helper
@@ -75,6 +79,14 @@ assert "grid.setOrientation(LinearLayout.VERTICAL)" in render
 assert "inRow == 2" in render, "question images should flow into two-column rows"
 assert "root.addView(grid" in render
 assert "while(root.getChildCount()>1)" not in helper
+decode_start = helper.index("private static Bitmap decode(")
+decode_end = helper.index("/** Release detached", decode_start)
+decode = helper[decode_start:decode_end]
+assert "int rotation = jpegRotation(file)" in decode
+assert "Bitmap.createBitmap(decoded, 0, 0," in decode
+assert "decoded.recycle()" in decode
+assert "return decoded;" in decode, "orientation failures must preserve the original decoded bitmap"
+
 preview_start = helper.index("private static void renderPreview(")
 preview_end = helper.index("public static void apply(", preview_start)
 assert ".delete()" not in helper[preview_start:preview_end], "preview deletion must be deferred until save succeeds"
