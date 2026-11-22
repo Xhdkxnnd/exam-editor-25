@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import java.io.*;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -32,7 +33,7 @@ public final class GalleryImages {
     private static final Map<Activity, State> STATES = new WeakHashMap<>();
 
     private static final class State {
-        LinearLayout preview;
+        WeakReference<LinearLayout> preview;
         final ArrayList<String> paths;
         ArrayList<String> originalPaths;
         File cameraFile;
@@ -192,7 +193,7 @@ public final class GalleryImages {
             preview.setOrientation(LinearLayout.HORIZONTAL);
             scroll.addView(preview);
             block.addView(scroll);
-            s.preview = preview;
+            s.preview = new WeakReference<>(preview);
             parent.addView(block, Math.max(0, parent.getChildCount() - 1));
             renderPreview(a, s);
         } catch (Exception e) {
@@ -372,10 +373,12 @@ public final class GalleryImages {
     }
 
     private static void renderPreview(Activity a, State s) {
-        if (s.preview == null) return;
-        for (int i = 0; i < s.preview.getChildCount(); i++)
-            releaseBitmaps(s.preview.getChildAt(i));
-        s.preview.removeAllViews();
+        // Do not let the static WeakHashMap retain an Activity through its view hierarchy.
+        LinearLayout preview = s.preview == null ? null : s.preview.get();
+        if (preview == null) return;
+        for (int i = 0; i < preview.getChildCount(); i++)
+            releaseBitmaps(preview.getChildAt(i));
+        preview.removeAllViews();
         for (String path : new ArrayList<>(s.paths)) {
             Bitmap bitmap = decode(internalFile(a, path), dp(a, 88), dp(a, 88));
             if (bitmap == null) continue;
@@ -393,7 +396,7 @@ public final class GalleryImages {
                 renderPreview(a, s);
             });
             item.addView(remove);
-            s.preview.addView(item);
+            preview.addView(item);
         }
     }
 
