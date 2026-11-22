@@ -65,6 +65,9 @@ for token in (
     'getMethod("getJpegRotate", String.class)',
     "private static int jpegRotation(File file)", "Matrix transform = new Matrix()",
     "transform.postRotate(rotation)",
+    "WeakReference<LinearLayout> preview",
+    "s.preview = new WeakReference<>(preview)",
+    "LinearLayout preview = s.preview == null ? null : s.preview.get()",
 ):
     assert token in helper, token
 assert "new ArrayList<>(s.paths)" in helper or "new ArrayList<>(current.paths)" in helper
@@ -115,4 +118,10 @@ for adapter_name in ("Listview1Adapter", "Listview1_5Adapter"):
     adapter_source = adapters[0].read_text()
     assert "invoke-static {v0, p2, v1}, Lcom/nasa/edateor/exsam/A11/GalleryImages;->renderQuestion" in adapter_source
 
-print("Gallery/camera, process-recovery, restricted FileProvider, save transaction, cancel cleanup, vertical row layout, bitmap release, both adapters, and both PDF pages passed static checks")
+assert "WeakReference<LinearLayout> preview" in helper
+assert "s.preview = new WeakReference<>(preview)" in helper
+assert "LinearLayout preview = s.preview == null ? null : s.preview.get()" in helper
+assert "s.preview.getChildCount()" not in helper
+assert "s.preview.addView(item)" not in helper
+
+print("Gallery/camera, process-recovery, restricted FileProvider, save transaction, cancel cleanup, vertical row layout, bitmap release, weak Activity/view retention, both adapters, and both PDF pages passed static checks")
