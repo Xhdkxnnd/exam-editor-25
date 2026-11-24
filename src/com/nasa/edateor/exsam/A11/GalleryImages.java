@@ -29,6 +29,7 @@ public final class GalleryImages {
     private static final int CAMERA_REQUEST = 27126;
     private static final String PREFS = "exam25_gallery_pending";
     private static final String CAMERA_PENDING_PREFIX = "exam25_camera_pending_";
+    private static final String CREATED_PENDING_PREFIX = "exam25_created_pending_";
     private static final String QUESTION_IMAGES_TAG = "exam25_question_images";
     private static final Map<Activity, State> STATES = new WeakHashMap<>();
 
@@ -36,11 +37,13 @@ public final class GalleryImages {
         WeakReference<LinearLayout> preview;
         final ArrayList<String> paths;
         ArrayList<String> originalPaths;
+        final ArrayList<String> createdPaths;
         File cameraFile;
         boolean applied;
-        State(ArrayList<String> selected, ArrayList<String> original) {
+        State(ArrayList<String> selected, ArrayList<String> original, ArrayList<String> created) {
             paths = selected;
             originalPaths = original;
+            createdPaths = created;
         }
     }
 
@@ -67,6 +70,10 @@ public final class GalleryImages {
 
     private static String cameraPendingKey(Activity a) {
         return CAMERA_PENDING_PREFIX + safeKey(a);
+    }
+
+    private static String createdPendingKey(Activity a) {
+        return CREATED_PENDING_PREFIX + safeKey(a);
     }
 
     private static File cameraDirectory(Activity a) throws IOException {
@@ -138,15 +145,39 @@ public final class GalleryImages {
 
     private static void savePending(Activity a, State s) {
         try {
-            StringBuilder b = new StringBuilder();
+            StringBuilder selected = new StringBuilder();
             for (String path : s.paths) {
                 if (!managed(path)) continue;
-                if (b.length() > 0) b.append('\n');
-                b.append(path);
+                if (selected.length() > 0) selected.append('\\n');
+                selected.append(path);
             }
-            a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
-                    .putString(key(a), b.toString()).apply();
+            StringBuilder created = new StringBuilder();
+            for (String path : s.createdPaths) {
+                if (!managed(path)) continue;
+                if (created.length() > 0) created.append('\\n');
+                created.append(path);
+            }
+            boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
+                    .putString(key(a), selected.toString())
+                    .putString(createdPendingKey(a), created.toString()).commit();
+            if (!saved) Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) { }
+    }
+
+    private static ArrayList<String> pendingCreatedPaths(Activity a, ArrayList<String> selected,
+            ArrayList<String> original) {
+        ArrayList<String> out = new ArrayList<>();
+        try {
+            SharedPreferences prefs = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
+            String raw = prefs.getString(createdPendingKey(a), null);
+            if (raw != null) {
+                for (String item : raw.split("\\n")) if (managed(item)) out.add(item);
+            } else {
+                // Recover pending sessions created by older builds without an explicit created-file list.
+                for (String item : selected) if (!original.contains(item)) out.add(item);
+            }
+        } catch (Exception ignored) { }
+        return out;
     }
 
     private static State state(Activity a) {
@@ -156,10 +187,11 @@ public final class GalleryImages {
         SharedPreferences prefs = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
         ArrayList<String> selected = prefs.contains(safeKey(a))
                 ? pendingPaths(a) : new ArrayList<>(original);
-        State created = new State(selected, original);
-        created.cameraFile = restoreCameraFile(a);
-        STATES.put(a, created);
-        return created;
+        ArrayList<String> created = pendingCreatedPaths(a, selected, original);
+        State restored = new State(selected, original, created);
+        restored.cameraFile = restoreCameraFile(a);
+        STATES.put(a, restored);
+        return restored;
     }
 
     private static int dp(Activity a, int value) {
@@ -246,7 +278,9 @@ public final class GalleryImages {
             try {
                 if (result == Activity.RESULT_OK && s.cameraFile != null
                         && s.cameraFile.isFile() && s.cameraFile.length() > 0) {
-                    s.paths.add(copyFile(a, s.cameraFile));
+                    String copied = copyFile(a, s.cameraFile);
+                    s.createdPaths.add(copied);
+                    s.paths.add(copied);
                     savePending(a, s);
                     renderPreview(a, s);
                 } else if (result == Activity.RESULT_OK) {
@@ -265,12 +299,20 @@ public final class GalleryImages {
             for (int n = 0; n < data.getClipData().getItemCount(); n++) {
                 Uri uri = data.getClipData().getItemAt(n).getUri();
                 if (uri == null) continue;
-                try { s.paths.add(copyUri(a, uri)); imported++; }
-                catch (Exception e) { failed++; }
+                try {
+                    String copied = copyUri(a, uri);
+                    s.createdPaths.add(copied);
+                    s.paths.add(copied);
+                    imported++;
+                } catch (Exception e) { failed++; }
             }
         } else if (data.getData() != null) {
-            try { s.paths.add(copyUri(a, data.getData())); imported++; }
-            catch (Exception e) { failed++; }
+            try {
+                String copied = copyUri(a, data.getData());
+                s.createdPaths.add(copied);
+                s.paths.add(copied);
+                imported++;
+            } catch (Exception e) { failed++; }
         }
         savePending(a, s);
         renderPreview(a, s);
@@ -434,23 +476,36 @@ public final class GalleryImages {
                 if (file != null) file.delete();
             }
         }
+        for (String created : s.createdPaths) {
+            if (!s.paths.contains(created)) {
+                File file = internalFile(a, created);
+                if (file != null) file.delete();
+            }
+        }
         s.originalPaths = new ArrayList<>(s.paths);
+        s.createdPaths.clear();
         s.applied = false;
+        a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
+                .remove(safeKey(a)).remove(createdPendingKey(a)).apply();
+
         a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit().remove(safeKey(a)).apply();
     }
 
     /** Discard new, uncommitted files only; original question images remain intact. */
     public static void discard(Activity a) {
         State s = STATES.get(a);
-        if (s == null) s = new State(pendingPaths(a), originalPaths(a));
-        for (String selected : s.paths) {
-            if (!s.originalPaths.contains(selected)) {
-                File file = internalFile(a, selected);
-                if (file != null) file.delete();
-            }
+        if (s == null) {
+            ArrayList<String> original = originalPaths(a);
+            ArrayList<String> selected = pendingPaths(a);
+            s = new State(selected, original, pendingCreatedPaths(a, selected, original));
+        }
+        for (String created : s.createdPaths) {
+            File file = internalFile(a, created);
+            if (file != null) file.delete();
         }
         deleteCameraFile(a, s);
-        a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit().remove(safeKey(a)).apply();
+        a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
+                .remove(safeKey(a)).remove(createdPendingKey(a)).apply();
         STATES.remove(a);
     }
 
