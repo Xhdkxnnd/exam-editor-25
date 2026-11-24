@@ -115,6 +115,10 @@ pending_end = helper.index("private static int dp(", pending_start)
 pending = helper[pending_start:pending_end]
 assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
 assert "for (String path : s.createdPaths)" in pending
+assert "selected.append('\\n')" in helper
+assert "created.append('\\n')" in helper
+assert "selected.append('\\\\n')" not in helper
+assert "created.append('\\\\n')" not in helper
 assert "private static ArrayList<String> pendingCreatedPaths(" in pending
 assert "if (raw != null)" in pending
 assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in pending
