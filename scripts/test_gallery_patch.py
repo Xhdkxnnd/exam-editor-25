@@ -67,6 +67,11 @@ for token in (
     "transform.postRotate(rotation)",
     "WeakReference<LinearLayout> preview",
     "s.preview = new WeakReference<>(preview)",
+    "CREATED_PENDING_PREFIX",
+    "final ArrayList<String> createdPaths",
+    "private static String createdPendingKey(Activity a)",
+    "pendingCreatedPaths",
+    "s.createdPaths.add(copied)",
     "LinearLayout preview = s.preview == null ? null : s.preview.get()",
 ):
     assert token in helper, token
@@ -104,6 +109,34 @@ preview_end = helper.index("public static void apply(", preview_start)
 preview = helper[preview_start:preview_end]
 assert "releaseBitmaps(s.preview.getChildAt(i))" in preview
 assert preview.index("releaseBitmaps(s.preview.getChildAt(i))") < preview.index("s.preview.removeAllViews()")
+
+pending_start = helper.index("private static void savePending(")
+pending_end = helper.index("private static int dp(", pending_start)
+pending = helper[pending_start:pending_end]
+assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
+assert "for (String path : s.createdPaths)" in pending
+assert "private static ArrayList<String> pendingCreatedPaths(" in pending
+assert "if (raw != null)" in pending
+assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in pending
+assert helper.count("s.createdPaths.add(copied)") == 3, "camera, multi-select and single-select imports must all be tracked"
+
+finish_start = helper.index("public static void finishSave(")
+finish_end = helper.index("public static void discard(", finish_start)
+finish = helper[finish_start:finish_end]
+assert "for (String created : s.createdPaths)" in finish
+assert "if (!s.paths.contains(created))" in finish
+assert "s.createdPaths.clear()" in finish
+assert ".remove(createdPendingKey(a))" in finish
+assert finish.index("if (!committed)") < finish.index("for (String created : s.createdPaths)")
+
+discard_start = helper.index("public static void discard(")
+discard_end = helper.index("public static void renderQuestion(", discard_start)
+discard = helper[discard_start:discard_end]
+assert "pendingCreatedPaths(a, selected, original)" in discard
+assert "for (String created : s.createdPaths)" in discard
+assert "File file = internalFile(a, created)" in discard
+assert ".remove(createdPendingKey(a))" in discard
+assert "for (String selected : s.paths)" not in discard
 
 layout_path = root / "res/layout/custam_v1.xml"
 assert layout_path.is_file()
