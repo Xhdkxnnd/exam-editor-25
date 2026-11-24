@@ -148,13 +148,13 @@ public final class GalleryImages {
             StringBuilder selected = new StringBuilder();
             for (String path : s.paths) {
                 if (!managed(path)) continue;
-                if (selected.length() > 0) selected.append('\\n');
+                if (selected.length() > 0) selected.append('\n');
                 selected.append(path);
             }
             StringBuilder created = new StringBuilder();
             for (String path : s.createdPaths) {
                 if (!managed(path)) continue;
-                if (created.length() > 0) created.append('\\n');
+                if (created.length() > 0) created.append('\n');
                 created.append(path);
             }
             boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
@@ -488,7 +488,6 @@ public final class GalleryImages {
         a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
                 .remove(safeKey(a)).remove(createdPendingKey(a)).apply();
 
-        a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit().remove(safeKey(a)).apply();
     }
 
     /** Discard new, uncommitted files only; original question images remain intact. */
