@@ -110,11 +110,16 @@ preview = helper[preview_start:preview_end]
 assert "releaseBitmaps(s.preview.getChildAt(i))" in preview
 assert preview.index("releaseBitmaps(s.preview.getChildAt(i))") < preview.index("s.preview.removeAllViews()")
 
-pending_start = helper.index("private static void savePending(")
+pending_signature = ("private static boolean savePending(" if "private static boolean savePending(" in helper else "private static void savePending(")
+pending_start = helper.index(pending_signature)
 pending_end = helper.index("private static int dp(", pending_start)
 pending = helper[pending_start:pending_end]
 assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
 assert "for (String path : s.createdPaths)" in pending
+if "private static boolean savePending(" in helper:
+    assert "boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()" in pending
+    assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
+    assert "return saved;" in pending and "return false;" in pending
 assert "selected.append('\\n')" in helper
 assert "created.append('\\n')" in helper
 assert "selected.append('\\\\n')" not in helper
@@ -123,6 +128,26 @@ assert "private static ArrayList<String> pendingCreatedPaths(" in pending
 assert "if (raw != null)" in pending
 assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in pending
 assert helper.count("s.createdPaths.add(copied)") == 3, "camera, multi-select and single-select imports must all be tracked"
+
+original_start = helper.index("private static ArrayList<String> originalPaths(")
+original_end = helper.index("private static ArrayList<String> pendingPaths(", original_start)
+original_method = helper[original_start:original_end]
+assert 'Object value = question(a).get("images");' in original_method
+assert 'if ("A".equals(field(a, "Tipee"))) return out;' not in original_method, "new-question recovery must recognize already committed image paths"
+
+activity_result_start = helper.index("public static void onActivityResult(")
+activity_result_end = helper.index("private static String copyUri(", activity_result_start)
+activity_result = helper[activity_result_start:activity_result_end]
+if "private static boolean savePending(" in helper:
+    assert "if (!savePending(a, s))" in activity_result, "camera import must roll back if pending state cannot be persisted"
+    assert "ArrayList<String> importedPaths = new ArrayList<>()" in activity_result
+    assert "if (imported > 0 && !savePending(a, s))" in activity_result, "gallery imports must roll back if pending state cannot be persisted"
+    assert "s.createdPaths.remove(copied)" in activity_result
+    preview_start = helper.index("private static void renderPreview(")
+    preview_end = helper.index("public static void apply(", preview_start)
+    preview = helper[preview_start:preview_end]
+    assert "int index = s.paths.indexOf(path)" in preview
+    assert "if (!savePending(a, s)) s.paths.add(Math.min(index, s.paths.size()), path);" in preview, "failed delete-state persistence must restore the selection"
 
 finish_start = helper.index("public static void finishSave(")
 finish_end = helper.index("public static void discard(", finish_start)
@@ -138,6 +163,8 @@ discard_end = helper.index("public static void renderQuestion(", discard_start)
 discard = helper[discard_start:discard_end]
 assert "pendingCreatedPaths(a, selected, original)" in discard
 assert "for (String created : s.createdPaths)" in discard
+if "private static boolean savePending(" in helper:
+    assert "if (s.originalPaths.contains(created)) continue;" in discard, "cancel after a successful question commit must not delete referenced files"
 assert "File file = internalFile(a, created)" in discard
 assert ".remove(createdPendingKey(a))" in discard
 assert "for (String selected : s.paths)" not in discard
