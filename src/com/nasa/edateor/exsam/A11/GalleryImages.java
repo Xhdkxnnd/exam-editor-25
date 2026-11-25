@@ -122,7 +122,6 @@ public final class GalleryImages {
     private static ArrayList<String> originalPaths(Activity a) {
         ArrayList<String> out = new ArrayList<>();
         try {
-            if ("A".equals(field(a, "Tipee"))) return out;
             Object value = question(a).get("images");
             if (value instanceof List<?>) {
                 for (Object item : (List<?>) value)
@@ -143,7 +142,7 @@ public final class GalleryImages {
         return out;
     }
 
-    private static void savePending(Activity a, State s) {
+    private static boolean savePending(Activity a, State s) {
         try {
             StringBuilder selected = new StringBuilder();
             for (String path : s.paths) {
@@ -160,8 +159,12 @@ public final class GalleryImages {
             boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
                     .putString(key(a), selected.toString())
                     .putString(createdPendingKey(a), created.toString()).commit();
-            if (!saved) Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة", Toast.LENGTH_LONG).show();
-        } catch (Exception ignored) { }
+            if (!saved) Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة؛ أُلغيت آخر عملية", Toast.LENGTH_LONG).show();
+            return saved;
+        } catch (Exception e) {
+            Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة؛ أُلغيت آخر عملية", Toast.LENGTH_LONG).show();
+            return false;
+        }
     }
 
     private static ArrayList<String> pendingCreatedPaths(Activity a, ArrayList<String> selected,
@@ -281,7 +284,12 @@ public final class GalleryImages {
                     String copied = copyFile(a, s.cameraFile);
                     s.createdPaths.add(copied);
                     s.paths.add(copied);
-                    savePending(a, s);
+                    if (!savePending(a, s)) {
+                        s.paths.remove(copied);
+                        s.createdPaths.remove(copied);
+                        File imported = internalFile(a, copied);
+                        if (imported != null) imported.delete();
+                    }
                     renderPreview(a, s);
                 } else if (result == Activity.RESULT_OK) {
                     Toast.makeText(a, "لم تُنتج الكاميرا صورة صالحة", Toast.LENGTH_LONG).show();
@@ -295,6 +303,7 @@ public final class GalleryImages {
         }
         if (result != Activity.RESULT_OK || data == null) return;
         int imported = 0, failed = 0;
+        ArrayList<String> importedPaths = new ArrayList<>();
         if (data.getClipData() != null) {
             for (int n = 0; n < data.getClipData().getItemCount(); n++) {
                 Uri uri = data.getClipData().getItemAt(n).getUri();
@@ -303,6 +312,7 @@ public final class GalleryImages {
                     String copied = copyUri(a, uri);
                     s.createdPaths.add(copied);
                     s.paths.add(copied);
+                    importedPaths.add(copied);
                     imported++;
                 } catch (Exception e) { failed++; }
             }
@@ -311,10 +321,20 @@ public final class GalleryImages {
                 String copied = copyUri(a, data.getData());
                 s.createdPaths.add(copied);
                 s.paths.add(copied);
+                importedPaths.add(copied);
                 imported++;
             } catch (Exception e) { failed++; }
         }
-        savePending(a, s);
+        if (imported > 0 && !savePending(a, s)) {
+            for (String copied : importedPaths) {
+                s.paths.remove(copied);
+                s.createdPaths.remove(copied);
+                File importedFile = internalFile(a, copied);
+                if (importedFile != null) importedFile.delete();
+            }
+            failed += imported;
+            imported = 0;
+        }
         renderPreview(a, s);
         if (imported > 0) Toast.makeText(a, "تمت إضافة " + imported + " صورة", Toast.LENGTH_SHORT).show();
         if (failed > 0) Toast.makeText(a, "تعذر استيراد " + failed + " صورة", Toast.LENGTH_LONG).show();
@@ -433,8 +453,10 @@ public final class GalleryImages {
             Button remove = new Button(a);
             remove.setText("حذف");
             remove.setOnClickListener(v -> {
-                s.paths.remove(path); // File deletion is deferred until commit succeeds.
-                savePending(a, s);
+                int index = s.paths.indexOf(path);
+                if (index < 0) return;
+                s.paths.remove(index); // File deletion is deferred until the question commit succeeds.
+                if (!savePending(a, s)) s.paths.add(Math.min(index, s.paths.size()), path);
                 renderPreview(a, s);
             });
             item.addView(remove);
@@ -499,6 +521,9 @@ public final class GalleryImages {
             s = new State(selected, original, pendingCreatedPaths(a, selected, original));
         }
         for (String created : s.createdPaths) {
+            // A crash may occur after the question commit but before finishSave clears pending state.
+            // If the current question already references this path, it is no longer disposable.
+            if (s.originalPaths.contains(created)) continue;
             File file = internalFile(a, created);
             if (file != null) file.delete();
         }
