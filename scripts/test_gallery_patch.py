@@ -100,7 +100,7 @@ preview_end = helper.index("public static void apply(", preview_start)
 assert ".delete()" not in helper[preview_start:preview_end], "preview deletion must be deferred until save succeeds"
 assert "if (!s.paths.contains(old))" in helper or "if (!current.paths.contains(oldPath))" in helper
 assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in helper, "legacy pending recovery must exclude original question images"
-assert "created.cameraFile = restoreCameraFile(a)" in helper
+assert "restored.cameraFile = restoreCameraFile(a)" in helper
 assert ".putString(cameraPendingKey(a), s.cameraFile.getAbsolutePath()).commit()" in helper
 assert "remove(cameraPendingKey(a)).apply()" in helper
 assert helper.index("releaseBitmaps(previous)") < helper.index("removeView(previous)")
