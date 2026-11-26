@@ -107,8 +107,8 @@ assert helper.index("releaseBitmaps(previous)") < helper.index("removeView(previ
 preview_start = helper.index("private static void renderPreview(")
 preview_end = helper.index("public static void apply(", preview_start)
 preview = helper[preview_start:preview_end]
-assert "releaseBitmaps(s.preview.getChildAt(i))" in preview
-assert preview.index("releaseBitmaps(s.preview.getChildAt(i))") < preview.index("s.preview.removeAllViews()")
+assert "releaseBitmaps(preview.getChildAt(i))" in preview
+assert preview.index("releaseBitmaps(preview.getChildAt(i))") < preview.index("preview.removeAllViews()")
 
 pending_signature = ("private static boolean savePending(" if "private static boolean savePending(" in helper else "private static void savePending(")
 pending_start = helper.index(pending_signature)
