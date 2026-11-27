@@ -114,7 +114,7 @@ pending_signature = ("private static boolean savePending(" if "private static bo
 pending_start = helper.index(pending_signature)
 pending_end = helper.index("private static int dp(", pending_start)
 pending = helper[pending_start:pending_end]
-assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
+assert ".putString(createdKey, created.toString()).commit()" in pending
 assert "for (String path : s.createdPaths)" in pending
 if "private static boolean savePending(" in helper:
     assert "boolean saved = prefs.edit().putString(selectedKey, selected.toString())" in pending
@@ -141,7 +141,7 @@ copy_method = helper[copy_start:copy_end]
 assert "try (FileOutputStream out = new FileOutputStream(destination))" in copy_method
 assert "out.getFD().sync()" in copy_method
 assert "if (!complete) destination.delete()" in copy_method
-assert "try (FileOutputStream out = new FileOutputStream(destination))" in copy_method, "stream must close on every write path"
+assert copy_method.index("try (FileOutputStream out = new FileOutputStream(destination))") < copy_method.index("out.flush()")
 assert "private static ArrayList<String> pendingCreatedPaths(" in pending
 assert "if (raw != null)" in pending
 assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in pending
