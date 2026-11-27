@@ -142,8 +142,35 @@ public final class GalleryImages {
         return out;
     }
 
-    private static boolean savePending(Activity a, State s) {
+    private static void restorePending(SharedPreferences prefs, String selectedKey,
+            String createdKey, boolean hadSelected, String oldSelected,
+            boolean hadCreated, String oldCreated) {
         try {
+            SharedPreferences.Editor editor = prefs.edit();
+            if (hadSelected) editor.putString(selectedKey, oldSelected);
+            else editor.remove(selectedKey);
+            if (hadCreated) editor.putString(createdKey, oldCreated);
+            else editor.remove(createdKey);
+            // apply() restores the in-memory map immediately, even if disk writes are still failing.
+            editor.apply();
+        } catch (Exception ignored) { }
+    }
+
+    private static boolean savePending(Activity a, State s) {
+        SharedPreferences prefs = null;
+        String selectedKey = null, createdKey = null;
+        boolean hadSelected = false, hadCreated = false, snapshotReady = false;
+        String oldSelected = null, oldCreated = null;
+        try {
+            prefs = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
+            selectedKey = key(a);
+            createdKey = createdPendingKey(a);
+            hadSelected = prefs.contains(selectedKey);
+            hadCreated = prefs.contains(createdKey);
+            oldSelected = prefs.getString(selectedKey, null);
+            oldCreated = prefs.getString(createdKey, null);
+            snapshotReady = true;
+
             StringBuilder selected = new StringBuilder();
             for (String path : s.paths) {
                 if (!managed(path)) continue;
@@ -156,12 +183,19 @@ public final class GalleryImages {
                 if (created.length() > 0) created.append('\n');
                 created.append(path);
             }
-            boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()
-                    .putString(key(a), selected.toString())
-                    .putString(createdPendingKey(a), created.toString()).commit();
-            if (!saved) Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة؛ أُلغيت آخر عملية", Toast.LENGTH_LONG).show();
+            boolean saved = prefs.edit().putString(selectedKey, selected.toString())
+                    .putString(createdKey, created.toString()).commit();
+            if (!saved) {
+                // commit() can update SharedPreferences' in-memory map even when its disk write fails.
+                restorePending(prefs, selectedKey, createdKey, hadSelected, oldSelected,
+                        hadCreated, oldCreated);
+                Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة؛ أُلغيت آخر عملية", Toast.LENGTH_LONG).show();
+            }
             return saved;
         } catch (Exception e) {
+            if (snapshotReady)
+                restorePending(prefs, selectedKey, createdKey, hadSelected, oldSelected,
+                        hadCreated, oldCreated);
             Toast.makeText(a, "تعذر حفظ حالة الصور المؤقتة؛ أُلغيت آخر عملية", Toast.LENGTH_LONG).show();
             return false;
         }
@@ -357,16 +391,18 @@ public final class GalleryImages {
         String relative = "question_images/" + UUID.randomUUID() + ".img";
         File destination = internalFile(a, relative);
         if (destination == null) throw new IOException("Invalid image destination");
-        FileOutputStream out = new FileOutputStream(destination);
         boolean complete = false;
         try {
-            byte[] buffer = new byte[8192];
-            int count;
-            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
-            out.flush();
-            complete = destination.length() > 0;
+            try (FileOutputStream out = new FileOutputStream(destination)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                out.getFD().sync();
+            }
+            complete = destination.isFile() && destination.length() > 0;
         } finally {
-            out.close();
+            // Also delete partial files when write, flush, fsync, or close fails.
             if (!complete) destination.delete();
         }
         if (!complete) throw new IOException("Empty image");

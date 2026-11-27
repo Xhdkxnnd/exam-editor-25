@@ -117,13 +117,31 @@ pending = helper[pending_start:pending_end]
 assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
 assert "for (String path : s.createdPaths)" in pending
 if "private static boolean savePending(" in helper:
-    assert "boolean saved = a.getSharedPreferences(PREFS, Activity.MODE_PRIVATE).edit()" in pending
-    assert ".putString(createdPendingKey(a), created.toString()).commit()" in pending
+    assert "boolean saved = prefs.edit().putString(selectedKey, selected.toString())" in pending
+    assert ".putString(createdKey, created.toString()).commit()" in pending
     assert "return saved;" in pending and "return false;" in pending
+    assert "snapshotReady = true;" in pending
+    assert "restorePending(prefs, selectedKey, createdKey" in pending
+    assert "if (!saved) {" in pending
+    assert "if (snapshotReady)" in pending
+    rollback_start = helper.index("private static void restorePending(")
+    rollback_end = helper.index("private static boolean savePending(", rollback_start)
+    rollback = helper[rollback_start:rollback_end]
+    assert "if (hadSelected) editor.putString(selectedKey, oldSelected)" in rollback
+    assert "if (hadCreated) editor.putString(createdKey, oldCreated)" in rollback
+    assert "editor.apply()" in rollback
 assert "selected.append('\\n')" in helper
 assert "created.append('\\n')" in helper
 assert "selected.append('\\\\n')" not in helper
 assert "created.append('\\\\n')" not in helper
+
+copy_start = helper.index("private static String copyStream(")
+copy_end = helper.index("/** Read the legacy app's EXIF", copy_start)
+copy_method = helper[copy_start:copy_end]
+assert "try (FileOutputStream out = new FileOutputStream(destination))" in copy_method
+assert "out.getFD().sync()" in copy_method
+assert "if (!complete) destination.delete()" in copy_method
+assert "try (FileOutputStream out = new FileOutputStream(destination))" in copy_method, "stream must close on every write path"
 assert "private static ArrayList<String> pendingCreatedPaths(" in pending
 assert "if (raw != null)" in pending
 assert "for (String item : selected) if (!original.contains(item)) out.add(item)" in pending
