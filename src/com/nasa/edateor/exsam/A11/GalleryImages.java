@@ -608,6 +608,17 @@ public final class GalleryImages {
             inRow++;
             rendered++;
         }
+        // A lone image in the final row should use the full width, not half of the grid.
+        if (imageRow != null && inRow == 1) {
+            View lastImage = imageRow.getChildAt(0);
+            if (lastImage instanceof ImageView) {
+                LinearLayout.LayoutParams params =
+                        (LinearLayout.LayoutParams) lastImage.getLayoutParams();
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                params.weight = 0f;
+                lastImage.setLayoutParams(params);
+            }
+        }
         if (rendered > 0) {
             grid.addView(new View(a), new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(a, 12)));

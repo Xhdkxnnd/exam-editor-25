@@ -85,6 +85,10 @@ render = helper[render_start:render_end]
 assert "HorizontalScrollView" not in render, "PDF images must not be clipped by a horizontal scroller"
 assert "grid.setOrientation(LinearLayout.VERTICAL)" in render
 assert "inRow == 2" in render, "question images should flow into two-column rows"
+assert "if (imageRow != null && inRow == 1)" in render, "a lone image in the last row must use full width"
+assert "params.width = ViewGroup.LayoutParams.MATCH_PARENT" in render
+assert "params.weight = 0f" in render
+assert 'if (!(value instanceof List<?>)) return; // Old questions without images are unchanged.' in render
 assert "root.addView(grid" in render
 assert "while(root.getChildCount()>1)" not in helper
 decode_start = helper.index("private static Bitmap decode(")
